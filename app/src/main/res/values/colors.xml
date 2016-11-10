@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#34495e</color>
+    <color name="colorPrimaryDark">#34495e</color>
+    <color name="colorAccent">#34495e</color>
+
+    <color name="black">#000000</color>
+    <color name="white">#ffffff</color>
+    <color name="red">#ff0000</color>
+    <color name="grey">#cccccc</color>
+    <color name="grey2">#bdc3c7</color>
+    <color name="grey3">#333333</color>
+    <color name="grey4">#999999</color>
+    <color name="transparent_black">#FF000000</color>
+    <color name="fairly_black">#666666</color>
+
+
+    <!-- HomeActivity -->
+    <color name="search_txt_color">#999999</color>
+    <color name="home_trending">#666666</color>
+    <color name="home_button_add">#e74c3c</color>
+    <color name="actionbar_icon_click">#cccccc</color>
+
+    <!-- Menu -->
+    <color name="menu_text">#c5c4c4</color>
+    <color name="sub_menu_text">#000000</color>
+
+    <!-- product view -->
+    <color name="indicator_bg">#c0392b</color>
+
+    <drawable name="color_one">#5b7fa1</drawable>
+    <drawable name="color_two">#5b7fa1</drawable>
+    <drawable name="color_three">#425c75</drawable>
+
+
+
+
+    <!-- unused colors -->
+    <color name="list_item_title">#ffffff</color>
+    <color name="list_background">#303030</color>
+    <color name="list_background_pressed">#F0F014</color>
+    <color name="list_divider">#272727</color>
+    <color name="counter_text_bg">#626262</color>
+    <color name="counter_text_color">#c5c4c4</color>
+    <color name="non_editable_text_color">#FF0000</color>
+
+</resources>
