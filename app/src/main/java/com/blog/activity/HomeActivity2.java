@@ -60,15 +60,15 @@ public class HomeActivity2 extends AppCompatActivity
     private int lastExpandedPosition = -1;
     private int firstExpandedPosition = 0;
 
-    ImageView closeButton;
+    private ImageView closeButton;
     private RecyclerView view;
     private ArrayList<Wp> data = new ArrayList<Wp>();
     private ArrayList<Categories> categories = new ArrayList<Categories>();
     private SwipeRefreshLayout swipeContainer;
-    LinearLayoutManager linearLayoutManager;
-    ListingAdapter2 listingAdapter;
+    private LinearLayoutManager linearLayoutManager;
+    private ListingAdapter2 listingAdapter;
     private ArrayList<String> imagesData = new ArrayList<String>();
-    ArrayList<String> imageUrlList =  new ArrayList<String>();
+    private ArrayList<String> imageUrlList =  new ArrayList<String>();
 
 
     private MaterialProgressBar progressBar;
@@ -77,8 +77,9 @@ public class HomeActivity2 extends AppCompatActivity
     private LinearLayout lostConnect;
     private LinearLayout noResult;
 
-    int pastVisiblesItems, visibleItemCount, totalItemCount;
-    boolean loading = true;
+    private int pastVisiblesItems, visibleItemCount, totalItemCount;
+    private boolean loading = true;
+    private int page = 1;
 
 
     @Override
@@ -110,8 +111,7 @@ public class HomeActivity2 extends AppCompatActivity
 
 
         view = (RecyclerView) findViewById(R.id.product_recycler);
-        linearLayoutManager = new LinearLayoutManager(view.getContext());
-        view.setLayoutManager(linearLayoutManager);
+
         //view.setHasFixedSize(true);
         //view.setLayoutManager(new LinearLayoutManager(this));
 
@@ -131,15 +131,21 @@ public class HomeActivity2 extends AppCompatActivity
                         if ( (visibleItemCount + pastVisiblesItems) >= totalItemCount)
                         {
                             loading = false;
+                            page = page + 1;
                             //Log.v("...", "Last Item Wow !");
                             Toast.makeText(HomeActivity2.this, "Last Item Wow !", Toast.LENGTH_SHORT).show();
                             //Do pagination.. i.e. fetch new data
-                            fetchPaginatedContent(totalItemCount * 2);
+                            //fetchPaginatedContent(totalItemCount * 2);
+                            fetchPaginatedContent(page);
                         }
                     }
                 }
             }
         });
+
+        linearLayoutManager = new LinearLayoutManager(view.getContext());
+        view.setLayoutManager(linearLayoutManager);
+
 
 
 
@@ -273,33 +279,22 @@ public class HomeActivity2 extends AppCompatActivity
             public void success(List<Wp> info, Response response) {
                 data = new ArrayList<Wp>(info);
 
+
+                System.out.println("hello1 in-here " + data.size());
+
                 for (int i = 0; i < data.size(); i++) {
                     imageUrlList.add(data.get(i).getEmbedded().getWpFeaturedmedia().get(0).getMediaDetails().getSizes().getMedium().getSourceUrl());
                 }
 
                 if (imageUrlList.size() > 0) {
-                    listingAdapter = new ListingAdapter2(HomeActivity2.this, data, view, imageUrlList);
-                    //listingAdapter.notifyDataSetChanged();
-                    //listingAdapter.notifyItemRangeChanged(0, listingAdapter.getItemCount());
-                    listingAdapter.notifyItemInserted(data.size() - 1);
-
-
-                    //view.setAdapter(listingAdapter);
-                    progressBar.setVisibility(View.GONE);
-                    // Now we call setRefreshing(false) to signal refresh has finished
-                    swipeContainer.setRefreshing(false);
-                } else {
-                    progressBar.setVisibility(View.GONE);
-                    noResult.setVisibility(View.VISIBLE);
+                    listingAdapter.addAll(data, 0, data.size());
                 }
+
             }
 
             @Override
             public void failure(RetrofitError error) {
-                progressBar.setVisibility(View.GONE);
-                lostConnect.setVisibility(View.VISIBLE);
-                //Toast.makeText(HomeActivity2.this, error.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
-                //Log.d("RetrofitError: ", error.getLocalizedMessage());
+
             }
         });
     }

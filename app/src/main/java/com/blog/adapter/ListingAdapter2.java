@@ -16,6 +16,7 @@ import com.blog.model.Wp;
 import com.bumptech.glide.Glide;
 
 import java.util.ArrayList;
+import java.util.List;
 
 
 /**
@@ -80,9 +81,20 @@ public class ListingAdapter2
 
         final Wp newValues = (Wp) mValues.get(position);
 
+
+
         String title = newValues.getTitle().getRendered().replace("-", " ");
-        title = title.substring(0, 1).toUpperCase() + title.substring(1);
-        title = title.substring(0, 30) + "...";
+        int tLength = title.length();
+        if(tLength >= 40){
+            title = title.substring(0, 40).toLowerCase() + "...";
+            title = title.substring(0, 1).toUpperCase() + title.substring(1);
+        } else {
+            if(tLength > 5) {
+                title = title.substring(0, tLength).toLowerCase();
+                title = title.substring(0, 1).toUpperCase() + title.substring(1);
+            }
+        }
+
 
         holder.mProductTitle.setText(title);
         String description = newValues.getContent().getRendered().substring(0, 80);
@@ -120,9 +132,10 @@ public class ListingAdapter2
         return mValues.size();
     }
 
-
-    private void addItem(Wp item) {
-        mValues.add(item);
+    public void addAll(List<Wp> data, int startPosition, int itemCount){
+        mValues.addAll(data);
+        notifyDataSetChanged();
+        //notifyItemRangeInserted(startPosition, itemCount);
     }
 }
 
