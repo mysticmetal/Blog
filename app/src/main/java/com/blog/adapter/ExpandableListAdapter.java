@@ -55,6 +55,8 @@ public class ExpandableListAdapter extends BaseExpandableListAdapter {
                 convertView = inflater.inflate(R.layout.sub_menu_item, null);
             }
             TextView item = (TextView) convertView.findViewById(R.id.laptop);
+            Typeface typeFace = Typeface.createFromAsset(context.getAssets(),"fonts/OpenSans-Light.ttf");
+            item.setTypeface(typeFace);
             item.setText(laptop);
         }
 
@@ -94,6 +96,8 @@ public class ExpandableListAdapter extends BaseExpandableListAdapter {
 
         TextView item = (TextView) convertView.findViewById(R.id.laptop);
         ImageView indicator = (ImageView) convertView.findViewById(R.id.menu_indicator);
+        Typeface typeFace = Typeface.createFromAsset(context.getAssets(),"fonts/OpenSans-Semibold.ttf");
+        item.setTypeface(typeFace);
 
 
         if ( getChildrenCount( groupPosition ) == 0 ) {
@@ -103,7 +107,7 @@ public class ExpandableListAdapter extends BaseExpandableListAdapter {
             indicator.setImageResource( isExpanded ? R.drawable.ic_chevron_up : R.drawable.ic_chevron_down );
         }
 
-        item.setTypeface(null, Typeface.BOLD);
+        //item.setTypeface(null, Typeface.BOLD);
         item.setText(laptopName);
 
 

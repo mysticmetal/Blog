@@ -19,7 +19,7 @@ import retrofit.http.Query;
 public interface WpApi {
 
     /* Post all post - all */
-    @GET("/wp-json/wp/v2/posts?per_page=10&_embed=true")
+    @GET("/wp-json/wp/v2/posts?per_page=6&_embed=true")
     public void getPosts( Callback<List<Wp>> response);
 
     /* Post by id */
@@ -27,8 +27,8 @@ public interface WpApi {
     public void getPost(@Path("ID") String ID, Callback<Wp> response);
 
     /* Post by id paginate */
-    @GET("/wp-json/wp/v2/posts?&_embed=true&per_page=10")
-    public void getPostPaginate(@Query("page") int page, Callback<List<Wp>> response);
+    @GET("/wp-json/wp/v2/posts?&_embed=true")
+    public void getPostPaginate(@Query("page") int page,@Query("per_page") int per_page, Callback<List<Wp>> response);
 
     /* Post by category - all */
     @GET("/wp-json/wp/v2/posts?per_page=100&_embed=true")

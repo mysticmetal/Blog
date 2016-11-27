@@ -1,6 +1,8 @@
 package com.blog.activity;
 
 import android.content.Intent;
+import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -12,6 +14,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.blog.R;
 import com.blog.model.Wp;
@@ -31,17 +34,20 @@ public class DetailActivity extends AppCompatActivity {
     private ArrayList<String> imageUrlList =  new ArrayList<String>();
     private int position;
     private String authorName = "";
-    TextView productTitle;
-    TextView toolbarTitle;
-    TextView productInfo;
-    ImageView productImage;
-    WebView myWebView;
-    int screenWidth;
+    private TextView productTitle;
+    private TextView toolbarTitle;
+    private TextView productInfo;
+    private ImageView productImage;
+    private WebView myWebView;
+    private int screenWidth;
+    private Typeface typeFace;
+    private ImageView callImage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detail);
+
 
         // Set a Toolbar to replace the ActionBar.
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -49,11 +55,12 @@ public class DetailActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
+        typeFace= Typeface.createFromAsset(getAssets(),"fonts/OpenSans-Light.ttf");
+
         Bundle extras = getIntent().getExtras();
         if (extras != null) {
             position = extras.getInt("position");
             mValues = (ArrayList<Wp>) getIntent().getSerializableExtra("mValues");
-            imageUrlList = (ArrayList<String>) getIntent().getSerializableExtra("imageUrlList");
         }
 
         myWebView = (WebView) findViewById(R.id.webview);
@@ -76,8 +83,8 @@ public class DetailActivity extends AppCompatActivity {
         toolbarTitle = (TextView) findViewById(R.id.toolbar_title);
         productInfo = (TextView) findViewById(R.id.product_info);
         productImage = (ImageView) findViewById(R.id.product_image);
-
-        imageUrlList.get(position);
+        productTitle.setTypeface(typeFace);
+        productInfo.setTypeface(typeFace);
 
         Glide.with(DetailActivity.this)
                 .load(mValues.get(position).getEmbedded().getWpFeaturedmedia().get(0)
@@ -85,12 +92,12 @@ public class DetailActivity extends AppCompatActivity {
                 .placeholder(R.drawable.big_placeholder)
                 .into(productImage);
 
+
+
         String title = mValues.get(position).getTitle().getRendered().replace("-", " ");
+        title = title.toLowerCase();
         title = title.substring(0, 1).toUpperCase() + title.substring(1);
         String toolbTitle = title.substring(0, 20)+"...";
-
-        productTitle.setText(title);
-        toolbarTitle.setText(toolbTitle);
 
         DateFormat originalFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH);
         DateFormat targetFormat = new SimpleDateFormat("d MMM yyyy hh:mm aaa");
@@ -104,66 +111,66 @@ public class DetailActivity extends AppCompatActivity {
         catch (Exception e){
             e.toString();
         }
-        productInfo.setText(formattedDate);
-        String posterName = mValues.get(position).getEmbedded().getAuthor().get(0).getName();
-        productInfo.setText(productInfo.getText() + " - By " + posterName);
 
+        try {
+            productTitle.setText(title);
+            toolbarTitle.setText(toolbTitle);
+            productInfo.setText(formattedDate);
+            String posterName = mValues.get(position).getEmbedded().getAuthor().get(0).getName();
+            productInfo.setText(productInfo.getText() + " - By " + posterName);
 
+            myWebView.setWebChromeClient(new WebChromeClient());
 
+            screenWidth = getWindowManager()
+                    .getDefaultDisplay().getWidth();
+            int myAPI = Build.VERSION.SDK_INT;
 
+            String fontSize = "15";
+            if (myAPI > 20) {
+                fontSize = "55";
+            }
 
+            String s = "<head><meta name='viewport' content='target-densityDpi=device-dpi'/></head>";
+            String style = "" +
+                    "<style> " +
+                    "img { height:auto !important; width:100% !important; } " +
+                    "iframe { height:" + String.valueOf(screenWidth) + "px !important; width:100% !important; }" +
+                    "html { padding:0; margin:0; font-size:" + fontSize + "px; } " +
+                    "</style>";
+            //@font-face { font-family: OpenSans-Light; src: url("file:///android_asset/fonts/OpenSans-Regular.ttf}
 
+            String content = mValues.get(position).getContent().getRendered();
 
-        myWebView.setWebChromeClient(new WebChromeClient());
+            myWebView.loadDataWithBaseURL("", s + style + content, "text/html", "UTF-8", "");
 
-        //myWebView.loadUrl("http://www.selectastyle.com/2016/04/chic-bold-latest-maju-collection-stars-models-tarmar-awobutu-jessica-chibueze/");
-        String data = "To give more hype to her upcoming movie “<strong>The Scorned Help</strong>”, fast rising Nollywood actress <strong>Nsikan Isaac</strong> released some eye-catchy fashion photos, shot by <strong>Tobbinator</strong>.\n\n" +
-                "<strong>Nsikan Isaac</strong> looks gorgeous in all the outfit she wore, and all we can say is that the<strong> GIAMA Awards</strong>nominee actress has her stylist to thank.\n\n" +
-                "\n\n" +
-                "See pictures below to know why we love Nsikan Isaac and her stylist <strong>MoAshy Styling</strong>\n\n" +
-                "\n\n" +
-                "<img class='alignnone' src='http://i2.wp.com/www.selectastyle.com/wp-content/uploads/2016/04/Nsikan-Isaac-1-selectastyle-8.jpg?w=600' alt='' width='600' height='900' />\n\n" +
-                "\n\n" +
-                "<img class='alignnone' src='http://i2.wp.com/www.selectastyle.com/wp-content/uploads/2016/04/Nsikan-Isaac-1-selectastyle-7.jpg?w=600' alt='' width='600' height='899' />\n\n" +
-                "\n\n" +
-                "<strong>Credit</strong>:\n\n" +
-                "<strong>Photo credit</strong> @tobbinator\n\n" +
-                "<strong>Makeup</strong> @dmannysglow\n\n" +
-                "<strong>Fashion Stylist</strong> @moashystyling\n\n" +
-                "<strong>Hair Stylist</strong> @bernardsmiles";
-
-        screenWidth = getWindowManager()
-                .getDefaultDisplay().getWidth();
-
-        int myAPI = Build.VERSION.SDK_INT;
-
-        System.out.println("hello1 " + myAPI);
-
-        String fontSize = "15";
-        if (myAPI > 20) {
-            fontSize = "60";
+            sharingButton = (ImageView) findViewById(R.id.share);
+            sharingButton.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+                    shareIt();
+                }
+            });
+        } catch (Exception e){
+            e.toString();
+            Toast.makeText(DetailActivity.this, "Error Occurred", Toast.LENGTH_SHORT).show();
         }
 
-
-        String s="<head><meta name='viewport' content='target-densityDpi=device-dpi'/></head>";
-        String style = "" +
-                "<style> " +
-                "img { height:auto !important; width:100% !important; } " +
-                "iframe { height:" + String.valueOf(screenWidth) + "px !important; width:100% !important; }" +
-                "html { padding:0; margin:0; font-size:"+ fontSize +"px; } " +
-                "</style>";
-
-
-        String content = mValues.get(position).getContent().getRendered();
-
-        myWebView.loadDataWithBaseURL("", s + style + content, "text/html", "UTF-8", "");
-
-        sharingButton = (ImageView) findViewById(R.id.share);
-        sharingButton.setOnClickListener(new View.OnClickListener() {
+        callImage = (ImageView) findViewById(R.id.call_image);
+        callImage.setOnClickListener(new View.OnClickListener() {
+            @Override
             public void onClick(View v) {
-                shareIt();
+                call();
             }
         });
+
+    }
+
+    public void call(){
+        try {
+            String ussd = "+2347063553818";
+            startActivity(new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + ussd)));
+        } catch (SecurityException e){
+            e.toString();
+        }
     }
 
     private void shareIt() {

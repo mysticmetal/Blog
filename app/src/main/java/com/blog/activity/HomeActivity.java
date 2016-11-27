@@ -1,7 +1,14 @@
 package com.blog.activity;
 
+/**
+ * Created by tosin on 8/5/2016.
+ */
+
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Typeface;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
@@ -18,19 +25,24 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.ExpandableListView;
 import android.widget.ImageView;
-import android.widget.ProgressBar;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import com.blog.R;
 import com.blog.adapter.ExpandableListAdapter;
 import com.blog.adapter.ListingAdapter;
+import com.blog.helpers.TextUtilities;
+import com.blog.model.Categories;
 import com.blog.model.Wp;
 import com.blog.singleton.RestClient;
+import com.blog.widget.MaterialProgressBar;
+import com.blog.widget.MaterialProgressBarWhite;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import retrofit.Callback;
 import retrofit.RetrofitError;
@@ -40,26 +52,38 @@ import retrofit.client.Response;
 public class HomeActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
+
     /** Expandable List **/
     private ArrayList<String> groupList;
     private ArrayList<String> childList;
-    private HashMap<Integer, List<Integer>> categoryIdList;
+
     private HashMap<String, List<String>> laptopCollection;
+    private HashMap<Integer, List<Integer>> categoryIdList;
+    private ArrayList<Integer> catList;
     private ExpandableListView expListView;
     private int lastExpandedPosition = -1;
     private int firstExpandedPosition = 0;
 
-    ImageView closeButton;
+    private ImageView closeButton;
     private RecyclerView view;
     private ArrayList<Wp> data = new ArrayList<Wp>();
+    private ArrayList<Categories> categories = new ArrayList<Categories>();
     private SwipeRefreshLayout swipeContainer;
-    LinearLayoutManager linearLayoutManager;
-     ListingAdapter listingAdapter;
+    private LinearLayoutManager linearLayoutManager;
+    private ListingAdapter listingAdapter;
     private ArrayList<String> imagesData = new ArrayList<String>();
-    String sourceUrl;
+    private ArrayList<String> imageUrlList =  new ArrayList<String>();
 
-    int totalItemCount;
-    private ProgressBar progressBar;
+
+    private MaterialProgressBar progressBar;
+    private MaterialProgressBarWhite categoriesProgressBar;
+
+    private LinearLayout lostConnect;
+    private LinearLayout noResult;
+
+    private boolean loading;
+    private int page = 1;
+    private ImageView callImage;
 
 
     @Override
@@ -78,111 +102,131 @@ public class HomeActivity extends AppCompatActivity
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+        int myAPI = Build.VERSION.SDK_INT;
+        if(myAPI > 20) {
+            navigationView.setPadding(0, 20, 0, 0);
+        }
 
 
-        progressBar = (ProgressBar) findViewById(R.id.progress_bar);
+        progressBar = (MaterialProgressBar) findViewById(R.id.progress_bar);
         progressBar.setVisibility(View.VISIBLE);
-
-
-        view = (RecyclerView) findViewById(R.id.product_recycler);
-        linearLayoutManager = new LinearLayoutManager(view.getContext());
-        view.setLayoutManager(linearLayoutManager);
-
-        view.setHasFixedSize(true);
-        view.setLayoutManager(new LinearLayoutManager(this));
-
-
-
-
-        RestClient.getInstance().getPosts(new Callback<List<Wp>>() {
+        callImage = (ImageView) findViewById(R.id.call_image);
+        callImage.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void success(List<Wp> info, Response response) {
-                data = new ArrayList<Wp>(info);
-
-                listingAdapter = new ListingAdapter(HomeActivity.this, data, view);
-                view.setAdapter(listingAdapter);
-                progressBar.setVisibility(View.GONE);
-
-                // Lazy loading
-                // add scroll listener
-                listingAdapter.setOnLoadMoreListener(new ListingAdapter.OnLoadMoreListener() {
-
-                    @Override
-                    public void onLoadMore(int page, int totalCount) {
-
-                        totalItemCount = totalCount;
-
-                        // fetch data here
-                        RestClient.getInstance().getPostPaginate(page, new Callback<List<Wp>>() {
-                            @Override
-                            public void success(List<Wp> info, Response response) {
-                                data = new ArrayList<Wp>(info);
-                                //remove progress item
-                                //data.remove(data.size() - 1);
-                                //listingAdapter.notifyItemRemoved(data.size());
-
-
-                                listingAdapter.setLoaded();
-                                listingAdapter.addAll(data, totalItemCount, data.size());
-                                //listingAdapter.notifyDataSetChanged();
-                                //System.out.println("Requested more info" + data.get(0).getTitle().getRendered());
-
-                            }
-
-                            @Override
-                            public void failure(RetrofitError error) {
-                                Toast.makeText(HomeActivity.this, error.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
-                                Log.d("RetrofitError: ", error.getLocalizedMessage());
-                            }
-                        });
-
-                    }
-                });
-
-            }
-
-            @Override
-            public void failure(RetrofitError error) {
-                Toast.makeText(HomeActivity.this, error.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
-                Log.d("RetrofitError: ", error.getLocalizedMessage());
+            public void onClick(View v) {
+                call();
             }
         });
 
 
+        lostConnect = (LinearLayout) findViewById(R.id.no_connection);
+        noResult = (LinearLayout) findViewById(R.id.no_result);
+
+        categoriesProgressBar = (MaterialProgressBarWhite) findViewById(R.id.categories_progress_bar);
+        categoriesProgressBar.setVisibility(View.VISIBLE);
 
 
+        view = (RecyclerView) findViewById(R.id.product_recycler);
 
+        //view.setHasFixedSize(true);
+        //view.setLayoutManager(new LinearLayoutManager(this));
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        //fetch the LoadActivity content
+        fetchData(false);
 
         initExpandableList();
+        pullToRefresh();
+    }
+
+    public void fetchData(final boolean refresh){
+
+        view.addOnScrollListener(new RecyclerView.OnScrollListener()
+        {
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy)
+            {
+                //Log.v("hello1", "inside 1");
+                if(dy > 0) //check for scroll down
+                {
+                    Log.v("hello1", "inside 2");
+                    int visibleThreshold = 3;
+                    int totalItemCount = linearLayoutManager.getItemCount();
+                    int lastVisibleItem = linearLayoutManager.findLastVisibleItemPosition();
+                    Log.v("hello1", "inside 2.1 T: " + totalItemCount + "L: " + lastVisibleItem + " loading: " + loading);
+
+                    if (!loading && totalItemCount <= (lastVisibleItem + visibleThreshold)) {
+                        Log.v("hello1", "inside 3");
+                        page = page + 1;
+                        fetchPaginatedContent(page);
+                        loading = true;
+                    }
+                }
+            }
+        });
+
+        linearLayoutManager = new LinearLayoutManager(view.getContext());
+        view.setLayoutManager(linearLayoutManager);
+
+        int perPage = 10;
+        if(refresh) perPage = 100;
+        RestClient.getInstance().getPostPaginate(page, perPage, new Callback<List<Wp>>() {
+            @Override
+            public void success(List<Wp> info, Response response) {
+                data = new ArrayList<Wp>(info);
+
+                if(data.size() > 0) {
+                    if(!refresh){
+                        listingAdapter = new ListingAdapter(HomeActivity.this, data, view, imageUrlList);
+                    } else {
+                        listingAdapter.clear();
+                        listingAdapter.addAll(data, 0, data.size());
+                        // notify for new data if refreshed
+                        //listingAdapter.notifyDataSetChanged();
+                        // Now we call setRefreshing(false) to signal refresh has finished
+                        swipeContainer.setRefreshing(false);
+                    }
+                    setLoaded(); // set loaded to false
+                    view.setAdapter(listingAdapter);
+                    progressBar.setVisibility(View.GONE);
+
+                } else {
+                    progressBar.setVisibility(View.GONE);
+                    noResult.setVisibility(View.VISIBLE);
+                }
+            }
+
+            @Override
+            public void failure(RetrofitError error) {
+                progressBar.setVisibility(View.GONE);
+                view.setVisibility(View.GONE);
+                //lostConnect.setVisibility(View.VISIBLE);
+                //Toast.makeText(HomeActivity.this, error.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+                //Log.d("RetrofitError: ", error.getLocalizedMessage());
+            }
+        });
+
+    }
+
+    public void setLoaded() {
+        loading = false;
     }
 
     public void pullToRefresh(){
         // Pull to refresh
+
         // Lookup the swipe container view
         swipeContainer = (SwipeRefreshLayout) findViewById(R.id.swipeContainer);
         // Setup refresh listener which triggers new data loading
         swipeContainer.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
+
                 // Your code to refresh the list here.
                 // Make sure you call swipeContainer.setRefreshing(false)
                 // once the network request has completed successfully.
-                fetchTimelineAsync(0);
+                fetchData(true);
+                //fetchTimelineAsync(0);
+                initExpandableList();
             }
         });
         // Configure the refreshing colors
@@ -192,120 +236,181 @@ public class HomeActivity extends AppCompatActivity
                 android.R.color.holo_red_light);
     }
 
-    public void fetchTimelineAsync(int page) {
+
+    public void fetchPaginatedContent(int page) {
         // Send the network request to fetch the updated data
-        RestClient.getInstance().getPosts(new Callback<List<Wp>>() {
+        Toast.makeText(HomeActivity.this, "Loading more...", Toast.LENGTH_SHORT).show();
+
+        int perPage = 10;
+        RestClient.getInstance().getPostPaginate(page, perPage, new Callback<List<Wp>>() {
             @Override
             public void success(List<Wp> info, Response response) {
                 data = new ArrayList<Wp>(info);
 
+                if (data.size() > 0) {
+                    setLoaded(); // set loaded to false
+                    listingAdapter.addAll(data, data.size() + 1, data.size());
+                }
 
-                view.setLayoutManager(new LinearLayoutManager(view.getContext()));
-                view.setAdapter(new ListingAdapter(HomeActivity.this, data, view));
-                // Now we call setRefreshing(false) to signal refresh has finished
-                swipeContainer.setRefreshing(false);
             }
 
             @Override
             public void failure(RetrofitError error) {
-                Toast.makeText(HomeActivity.this, error.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
-                Log.d("RetrofitError: ", error.getLocalizedMessage());
+                view.setVisibility(View.GONE);
+                //lostConnect.setVisibility(View.VISIBLE);
             }
         });
     }
 
 
-
-
-
-
     private void initExpandableList(){
-
         createGroupList();
-        createCollection();
-        expListView = (ExpandableListView) findViewById(R.id.menu_list);
-        final ExpandableListAdapter expListAdapter = new ExpandableListAdapter(
-                this, groupList, laptopCollection, categoryIdList);
-        expListView.setAdapter(expListAdapter);
-        expListView.setFocusable(false);
-        //expListView.expandGroup(0);
-        if(groupList.size()!=0){
-            //expListView.expandGroup(0);
-        }
-
-        //setGroupIndicatorToRight();
-        expListView.setOnChildClickListener(new ExpandableListView.OnChildClickListener() {
-            public boolean onChildClick(ExpandableListView parent, View v,
-                                        int groupPosition, int childPosition, long id) {
-                final String selected = (String) expListAdapter.getChild(
-                        groupPosition, childPosition);
-                Toast.makeText(getBaseContext(), selected, Toast.LENGTH_LONG)
-                        .show();
-                return true;
-            }
-        });
-
-        expListView.setOnGroupExpandListener(new ExpandableListView.OnGroupExpandListener() {
-            @Override
-            public void onGroupExpand(int groupPosition) {
-
-                if (firstExpandedPosition == 0) {
-                    lastExpandedPosition = firstExpandedPosition;
-                    firstExpandedPosition = 99; //any random number apart from zero
-                }
-
-                if (lastExpandedPosition != -1
-                        && groupPosition != lastExpandedPosition) {
-                    expListView.collapseGroup(lastExpandedPosition);
-                }
-
-                lastExpandedPosition = groupPosition;
-            }
-        });
     }
 
     /** Expandable List View **/
     private void createGroupList() {
         groupList = new ArrayList<String>();
-        groupList.add("Women Apparels");
-        groupList.add("Men Apparels");
-        groupList.add("Kids Apparels");
-        groupList.add("Footwear");
-        groupList.add("Accessories");
-        groupList.add("Beauty");
+        final HashMap<Integer, String> subs= new HashMap<Integer, String>();
+        laptopCollection = new LinkedHashMap<String, List<String>>();
+        categoryIdList = new LinkedHashMap<Integer, List<Integer>>();
+
+        RestClient.getInstance().getCategories(new Callback<List<Categories>>() {
+            @Override
+            public void success(List<Categories> info, Response response) {
+                categories = new ArrayList<Categories>(info);
+                categoriesProgressBar.setVisibility(View.GONE);
+
+                //put the id, and name of categories into a Map to be iterated for parent ID
+                for(int i=0; i<categories.size(); i++) {
+                    subs.put(categories.get(i).getId().intValue(), categories.get(i).getName().toString());
+                    if(categories.get(i).getParent().intValue() == 0) {
+                        groupList.add(TextUtilities.toUpperCaseFirst(categories.get(i).getName().toString()));
+                    }
+                }
+
+                //Iterate Map to extract the right parent ID for subcategories
+                for (Map.Entry<Integer, String> entry : subs.entrySet()) {
+                    int key = entry.getKey();
+                    ArrayList<String> nameArr = new ArrayList<String>();
+                    int k = 0;
+                    for(int i=0; i<categories.size(); i++) {
+                        if(categories.get(i).getParent().intValue() == key){
+                            if(k == 0) {
+                                nameArr.add(entry.getValue());
+                                k = 1;
+                            }
+                            nameArr.add(categories.get(i).getName().toString());
+                        }
+                    }
+                    String[] subCategory = nameArr.toArray(new String[nameArr.size()]);
+//                    loadChild(subCategory);
+                     childList = new ArrayList<String>();
+                     for (String model : subCategory) {
+                         childList.add(model);
+                     }
+                    laptopCollection.put(TextUtilities.toUpperCaseFirst(entry.getValue().toString()), childList);
+                }
+
+
+                //Iterate through the Grouplist of categories
+                //Iterate through the Map to get Value stored and check against the Grouplist of categories
+                //If found in lowercase, add the Category ID to categoryId List.
+                int j = 0;
+                for(String grlist : groupList){
+                    for (Map.Entry<Integer, String> entry : subs.entrySet()) {
+                        int key = entry.getKey();
+                        if(entry.getValue().toLowerCase().equals(grlist.toLowerCase())){
+                            catList = new ArrayList<Integer>();
+                            int k = 0;
+                            for(int i=0; i<categories.size(); i++) {
+                                if(categories.get(i).getParent().intValue() == key){
+                                    if(k == 0) {
+                                        catList.add(categories.get(i).getParent().intValue());
+                                        k = 1;
+                                    }
+                                    catList.add(categories.get(i).getId().intValue());
+                                }
+                            }
+                            categoryIdList.put(j, catList);
+                            j++;
+                        }
+                    }
+                }
+
+
+
+                expListView = (ExpandableListView) findViewById(R.id.menu_list);
+                final ExpandableListAdapter expListAdapter = new ExpandableListAdapter(
+                        HomeActivity.this, groupList, laptopCollection, categoryIdList);
+                expListView.setAdapter(expListAdapter);
+                expListView.setFocusable(false);
+                //expListView.expandGroup(0);
+                if(groupList.size()!=0){
+                    //expListView.expandGroup(0);
+                }
+
+                //setGroupIndicatorToRight();
+                expListView.setOnChildClickListener(new ExpandableListView.OnChildClickListener() {
+                    public boolean onChildClick(ExpandableListView parent, View v,
+                                                int groupPosition, int childPosition, long id) {
+
+                        int cat = categoryIdList.get(groupPosition).get(childPosition);
+                        final String selected = (String) expListAdapter.getChild(
+                                groupPosition, childPosition);
+
+                        //close drawer
+                        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+                        drawer.closeDrawer(GravityCompat.START);
+
+                        Context context = v.getContext();
+                        Intent intent = new Intent(context, CategoryActivity.class);
+                        intent.putExtra("categoryId", cat);
+                        intent.putExtra("categoryTitle", selected);
+                        context.startActivity(intent);
+
+                        Toast.makeText(getBaseContext(), selected, Toast.LENGTH_LONG)
+                                .show();
+                        return true;
+                    }
+                });
+
+                expListView.setOnGroupExpandListener(new ExpandableListView.OnGroupExpandListener() {
+                    @Override
+                    public void onGroupExpand(int groupPosition) {
+
+                        if (firstExpandedPosition == 0) {
+                            lastExpandedPosition = firstExpandedPosition;
+                            firstExpandedPosition = 99; //any random number apart from zero
+                        }
+
+                        if (lastExpandedPosition != -1
+                                && groupPosition != lastExpandedPosition) {
+                            expListView.collapseGroup(lastExpandedPosition);
+                        }
+
+                        lastExpandedPosition = groupPosition;
+                    }
+                });
+
+
+            }
+
+            @Override
+            public void failure(RetrofitError error) {
+                categoriesProgressBar.setVisibility(View.GONE);
+                //Toast.makeText(HomeActivity.this, error.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+                //Log.d("RetrofitError: ", error.getLocalizedMessage());
+            }
+        });
+
     }
 
-
-    private void createCollection() {
-        // preparing laptops collection(child)
-
-        String[] ikeja = {"Apparel1", "Apparel1", "Apparel1", "Apparel1"};
-        String[] festac = {"Apparel1", "Apparel1", "Apparel1", "Apparel1"};
-        String[] galleria = {"Apparel1", "Apparel1", "Apparel1", "Apparel1"};
-        String[] ph = {"Apparel1", "Apparel1", "Apparel1", "Apparel1"};
-        String[] secabuja = {"Apparel1", "Apparel1", "Apparel1", "Apparel1"};
-        String[] accra = {"Apparel1", "Apparel1", "Apparel1", "Apparel1"};
-
-
-
-        laptopCollection = new LinkedHashMap<String, List<String>>();
-
-        for (String laptop : groupList) {
-            if (laptop.equals("Women Apparels")) {
-                loadChild(ikeja);
-            }
-            else if (laptop.equals("Men Apparels"))
-                loadChild(festac);
-            else if (laptop.equals("Kids Apparels"))
-                loadChild(galleria);
-            else if (laptop.equals("Footwear"))
-                loadChild(ph);
-            else if (laptop.equals("Accessories"))
-                loadChild(secabuja);
-            else if (laptop.equals("Beauty"))
-                loadChild(accra);
-
-            laptopCollection.put(laptop, childList);
+    public void call(){
+        try {
+            String ussd = "+2347063553818";
+            startActivity(new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + ussd)));
+        } catch (SecurityException e){
+            e.toString();
         }
     }
 
@@ -360,13 +465,6 @@ public class HomeActivity extends AppCompatActivity
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
     }
-
-    public void myFancyMethod2(View v) {
-        Context context = v.getContext();
-        Intent intent = new Intent(context, DetailActivity.class);
-        context.startActivity(intent);
-    }
-
 
 
 //    @Override

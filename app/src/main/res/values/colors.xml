@@ -15,7 +15,7 @@
     <color name="fairly_black">#666666</color>
 
 
-    <!-- HomeActivity -->
+    <!-- LoadActivity -->
     <color name="search_txt_color">#999999</color>
     <color name="home_trending">#666666</color>
     <color name="home_button_add">#e74c3c</color>

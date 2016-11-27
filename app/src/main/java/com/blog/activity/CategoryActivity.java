@@ -6,6 +6,7 @@ package com.blog.activity;
 
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
@@ -20,7 +21,7 @@ import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import com.blog.R;
-import com.blog.adapter.ListingAdapter2;
+import com.blog.adapter.ListingAdapter;
 import com.blog.model.Categories;
 import com.blog.model.Wp;
 import com.blog.singleton.RestClient;
@@ -51,7 +52,7 @@ public class CategoryActivity extends AppCompatActivity {
     private ArrayList<Categories> categories = new ArrayList<Categories>();
     private SwipeRefreshLayout swipeContainer;
     LinearLayoutManager linearLayoutManager;
-    ListingAdapter2 listingAdapter;
+    ListingAdapter listingAdapter;
     private ArrayList<String> imagesData = new ArrayList<String>();
     ArrayList<String> imageUrlList =  new ArrayList<String>();
 
@@ -62,6 +63,7 @@ public class CategoryActivity extends AppCompatActivity {
 
     private int categoryId;
     private String categoryTitle;
+    private ImageView callImage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,6 +88,13 @@ public class CategoryActivity extends AppCompatActivity {
 
         progressBar = (MaterialProgressBar) findViewById(R.id.progress_bar);
         progressBar.setVisibility(View.VISIBLE);
+        callImage = (ImageView) findViewById(R.id.call_image);
+        callImage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                call();
+            }
+        });
 
         lostConnect = (LinearLayout) findViewById(R.id.no_connection);
         noResult = (LinearLayout) findViewById(R.id.no_result);
@@ -102,12 +111,8 @@ public class CategoryActivity extends AppCompatActivity {
             public void success(List<Wp> info, Response response) {
                 data = new ArrayList<Wp>(info);
 
-                for(int i=0; i<data.size(); i++) {
-                    imageUrlList.add(data.get(i).getEmbedded().getWpFeaturedmedia().get(0).getMediaDetails().getSizes().getThumbnail().getSourceUrl());
-                }
-
-                if(imageUrlList.size() > 0) {
-                    listingAdapter = new ListingAdapter2(CategoryActivity.this, data, view, imageUrlList);
+                if(data.size() > 0) {
+                    listingAdapter = new ListingAdapter(CategoryActivity.this, data, view, imageUrlList);
                     view.setAdapter(listingAdapter);
                     progressBar.setVisibility(View.GONE);
                 } else {
@@ -120,7 +125,8 @@ public class CategoryActivity extends AppCompatActivity {
             @Override
             public void failure(RetrofitError error) {
                 progressBar.setVisibility(View.GONE);
-                lostConnect.setVisibility(View.VISIBLE);
+                view.setVisibility(View.GONE);
+                //lostConnect.setVisibility(View.VISIBLE);
                     //Toast.makeText(CategoryActivity.this, error.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
                     //Log.d("RetrofitError: ", error.getLocalizedMessage());
             }
@@ -155,18 +161,15 @@ public class CategoryActivity extends AppCompatActivity {
     public void fetchTimelineAsync(int page) {
         // Send the network request to fetch the updated data
         Toast.makeText(CategoryActivity.this, "Refreshing...", Toast.LENGTH_SHORT).show();
-        imageUrlList.clear();
+
 
         RestClient.getInstance().getPostByCategory(categoryId, new Callback<List<Wp>>() {
             @Override
             public void success(List<Wp> info, Response response) {
                 data = new ArrayList<Wp>(info);
-                for(int i=0; i<data.size(); i++) {
-                    imageUrlList.add(data.get(i).getEmbedded().getWpFeaturedmedia().get(0).getMediaDetails().getSizes().getMedium().getSourceUrl());
-                }
 
-                if(imageUrlList.size() > 0) {
-                    listingAdapter = new ListingAdapter2(CategoryActivity.this, data, view, imageUrlList);
+                if(data.size() > 0) {
+                    listingAdapter = new ListingAdapter(CategoryActivity.this, data, view, imageUrlList);
                     listingAdapter.notifyDataSetChanged();
                     view.setAdapter(listingAdapter);
                     progressBar.setVisibility(View.GONE);
@@ -181,8 +184,8 @@ public class CategoryActivity extends AppCompatActivity {
             @Override
             public void failure(RetrofitError error) {
                 progressBar.setVisibility(View.GONE);
-                lostConnect.setVisibility(View.VISIBLE);
-                //Toast.makeText(HomeActivity2.this, error.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+                //lostConnect.setVisibility(View.VISIBLE);
+                //Toast.makeText(HomeActivity.this, error.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
                 //Log.d("RetrofitError: ", error.getLocalizedMessage());
             }
         });
@@ -190,6 +193,14 @@ public class CategoryActivity extends AppCompatActivity {
 
 
 
+    public void call(){
+        try {
+            String ussd = "+2347063553818";
+            startActivity(new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + ussd)));
+        } catch (SecurityException e){
+            e.toString();
+        }
+    }
 
 
 
